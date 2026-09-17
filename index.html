@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#7657e8">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Study Hub">
+  <title>My Study Hub 📚</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <a class="brand" href="#home">📚 My Study Hub</a>
+    <nav>
+      <a href="#home">หน้าแรก</a>
+      <a href="#subjects">วิชาเรียน</a>
+    </nav>
+  </header>
+
+  <main id="home">
+    <section class="hero">
+      <div>
+        <p class="tag">MY LEARNING SPACE</p>
+        <h1>พื้นที่รวมวิชาเรียน<br><span>ของฉัน ✨</span></h1>
+        <p>เลือกวิชา แล้วเพิ่มรูปภาพ เนื้อหา และผลงานของคุณได้ในที่เดียว ข้อมูลถูกเก็บไว้ในเครื่องนี้</p>
+        <div class="hero-stats" id="heroStats"></div>
+        <a class="hero-btn" href="#subjects">ดูวิชาเรียน ↓</a>
+        <div id="phoneHint" class="phone-hint hidden"></div>
+      </div>
+      <div class="hero-card">🎓<br><small>เรียนรู้ • เก็บงาน • ทบทวน</small></div>
+    </section>
+
+    <section id="subjects" class="subjects-section">
+      <div class="section-title">
+        <div>
+          <p class="tag">SUBJECTS</p>
+          <h2>วิชาเรียนทั้งหมด</h2>
+        </div>
+        <div class="section-actions">
+          <input id="searchInput" type="search" placeholder="🔎 ค้นหาวิชา..." autocomplete="off">
+          <button id="addSubjectBtn" class="add-subject-btn" type="button">＋ สร้างวิชา</button>
+        </div>
+      </div>
+
+      <div id="subjectGrid" class="subject-grid"></div>
+    </section>
+  </main>
+
+  <div id="subjectModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-box">
+      <button class="close" type="button" onclick="closeModal()" aria-label="ปิด">×</button>
+      <div class="modal-header-row">
+        <div>
+          <h2 id="modalTitle">วิชา</h2>
+          <p id="modalDescription"></p>
+        </div>
+        <div class="modal-header-actions">
+          <button id="editSubjectBtn" class="ghost-btn" type="button">แก้ไขวิชา</button>
+        </div>
+      </div>
+
+      <div class="tabs" role="tablist">
+        <button class="tab active" type="button" data-tab="images" role="tab">📷 รูปภาพ</button>
+        <button class="tab" type="button" data-tab="notes" role="tab">📝 เนื้อหา</button>
+        <button class="tab" type="button" data-tab="works" role="tab">✅ ผลงาน</button>
+      </div>
+
+      <section id="panel-images" class="tab-panel">
+        <div class="upload-area" id="uploadArea">
+          <label for="imageInput" class="upload-btn">📷 เลือกรูปจากเครื่องหรือมือถือ</label>
+          <input id="imageInput" type="file" accept="image/*" multiple>
+          <p>บนมือถือกดเลือกเพื่อเปิดคลังรูปหรือกล้อง คลิกรูปเพื่อเปิดและขยาย</p>
+        </div>
+        <div id="gallery" class="gallery"></div>
+      </section>
+
+      <section id="panel-notes" class="tab-panel hidden">
+        <label class="notes-label" for="notesInput">จดเนื้อหา สูตร หรือสิ่งที่ต้องจำ</label>
+        <textarea id="notesInput" rows="10" placeholder="พิมพ์โน้ตของวิชานี้ที่นี่..."></textarea>
+        <p class="save-status" id="notesStatus">บันทึกอัตโนมัติ</p>
+      </section>
+
+      <section id="panel-works" class="tab-panel hidden">
+        <form id="workForm" class="work-form">
+          <input id="workInput" type="text" maxlength="80" placeholder="เพิ่มงาน / การบ้าน / ผลงาน..." required>
+          <button type="submit">เพิ่ม</button>
+        </form>
+        <ul id="workList" class="work-list"></ul>
+      </section>
+    </div>
+  </div>
+
+  <div id="createSubjectModal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-box create-box">
+      <button class="close" type="button" onclick="closeCreateSubjectModal()" aria-label="ปิด">×</button>
+      <h2 id="createSubjectTitle">สร้างวิชาใหม่</h2>
+      <p class="form-hint">เพิ่มหรือแก้ไขวิชา แล้วเก็บบันทึกไว้ในเครื่องนี้</p>
+      <form id="createSubjectForm">
+        <label>
+          ชื่อวิชา
+          <input id="subjectNameInput" type="text" maxlength="40" placeholder="เช่น ดนตรี" required>
+        </label>
+        <label>
+          ไอคอน (อิโมจิ)
+          <input id="subjectIconInput" type="text" maxlength="8" placeholder="🎵" value="📘">
+        </label>
+        <div class="emoji-row" id="emojiRow"></div>
+        <label>
+          คำอธิบาย
+          <textarea id="subjectDescInput" rows="3" maxlength="120" placeholder="สั้น ๆ ว่าวิชานี้เกี่ยวกับอะไร"></textarea>
+        </label>
+        <button class="save-subject-btn" type="submit">บันทึกวิชา</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="lightbox" class="lightbox hidden" role="dialog" aria-modal="true" aria-label="ดูรูปขยาย">
+    <button class="lightbox-close" type="button" aria-label="ปิด">×</button>
+    <button class="lightbox-nav lightbox-prev" type="button" aria-label="รูปก่อนหน้า">‹</button>
+    <img id="lightboxImage" alt="รูปขยาย">
+    <button class="lightbox-nav lightbox-next" type="button" aria-label="รูปถัดไป">›</button>
+    <p id="lightboxCaption"></p>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <footer>
+    <p>📚 My Study Hub — เว็บไซต์รวบรวมวิชาเรียน</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
