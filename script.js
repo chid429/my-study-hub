@@ -12,7 +12,8 @@ const defaultSubjects = [
 const EMOJIS = ["📘", "📐", "🔬", "📖", "🇬🇧", "💻", "🌏", "🎨", "🛠️", "🎵", "🧪", "🧠", "⚽", "🌱", "⭐"];
 
 let customSubjects = loadJson("customSubjects", []);
-let subjects = [...defaultSubjects, ...customSubjects];
+let hiddenDefaultSubjects = loadJson("hiddenDefaultSubjects", []);
+let subjects = [];
 let images = loadJson("studyImages", {});
 let notes = loadJson("studyNotes", {});
 let works = loadJson("studyWorks", {});
@@ -71,7 +72,10 @@ function setModalOpen(isOpen) {
 }
 
 function refreshSubjects() {
-  subjects = [...defaultSubjects, ...customSubjects];
+  subjects = [
+    ...defaultSubjects.filter(item => !hiddenDefaultSubjects.includes(item.name)),
+    ...customSubjects
+  ];
 }
 
 function isCustomSubject(name) {
@@ -128,7 +132,7 @@ function renderSubjects(list = subjects) {
       <p class="card-meta">${imageCount} รูป • ${workCount} งาน • ${hasNotes ? "มีโน้ต" : "ยังไม่มีโน้ต"}</p>
       <div class="card-actions">
         <button class="open-btn" type="button">เปิดวิชา →</button>
-        ${isCustomSubject(subject.name) ? '<button class="delete-subject" type="button">ลบวิชา</button>' : ""}
+        <button class="delete-subject" type="button">ลบวิชา</button>
       </div>
     `;
     card.onclick = event => {
@@ -258,10 +262,14 @@ function moveSubjectData(from, to) {
 function deleteSubject(name) {
   if (!confirm(`ลบวิชา "${name}" พร้อมรูป โน้ต และผลงานทั้งหมดหรือไม่?`)) return;
   customSubjects = customSubjects.filter(subject => subject.name !== name);
+  if (defaultSubjects.some(item => item.name === name) && !hiddenDefaultSubjects.includes(name)) {
+    hiddenDefaultSubjects.push(name);
+  }
   delete images[name];
   delete notes[name];
   delete works[name];
-  saveJson("customSubjects", customSubjects);
+  if (!saveJson("customSubjects", customSubjects)) return;
+  saveJson("hiddenDefaultSubjects", hiddenDefaultSubjects);
   saveJson("studyImages", images);
   saveJson("studyNotes", notes);
   saveJson("studyWorks", works);
@@ -408,6 +416,9 @@ document.getElementById("createSubjectForm").addEventListener("submit", saveSubj
 document.getElementById("editSubjectBtn").addEventListener("click", () => {
   openCreateSubjectModal(getSubject(currentSubject));
 });
+document.getElementById("deleteSubjectBtn").addEventListener("click", () => {
+  if (currentSubject) deleteSubject(currentSubject);
+});
 
 document.querySelectorAll(".tab").forEach(tab => {
   tab.addEventListener("click", () => switchTab(tab.dataset.tab));
@@ -490,4 +501,5 @@ document.addEventListener("keydown", event => {
 });
 
 renderEmojiRow();
+refreshSubjects();
 renderSubjects();

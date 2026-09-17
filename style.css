@@ -306,6 +306,12 @@ main {
   padding-right: 36px;
 }
 
+.modal-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 #modalDescription {
   color: #777c90;
   margin-top: 6px;
