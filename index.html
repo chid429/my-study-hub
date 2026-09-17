@@ -61,7 +61,7 @@
         </div>
         <div class="modal-header-actions">
           <button id="editSubjectBtn" class="ghost-btn" type="button">แก้ไขวิชา</button>
-          <button id="deleteSubjectBtn" class="delete-subject" type="button">ลบวิชา</button>
+          <button id="deleteSubjectBtn" class="delete-subject" type="button">ลบวิชานี้</button>
         </div>
       </div>
 
@@ -128,12 +128,23 @@
     <p id="lightboxCaption"></p>
   </div>
 
+  <div id="confirmModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="modal-box create-box">
+      <h2 id="confirmTitle">ลบวิชา</h2>
+      <p id="confirmMessage" class="form-hint">ยืนยันการลบวิชานี้</p>
+      <div class="confirm-actions">
+        <button id="confirmCancelBtn" class="ghost-btn" type="button">ยกเลิก</button>
+        <button id="confirmOkBtn" class="delete-subject" type="button">ลบเลย</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast hidden"></div>
 
   <footer>
     <p>📚 My Study Hub — เว็บไซต์รวบรวมวิชาเรียน</p>
   </footer>
 
-  <script src="script.js"></script>
+  <script src="script.js?v=3"></script>
 </body>
 </html>

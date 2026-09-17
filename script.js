@@ -11,9 +11,8 @@ const defaultSubjects = [
 
 const EMOJIS = ["📘", "📐", "🔬", "📖", "🇬🇧", "💻", "🌏", "🎨", "🛠️", "🎵", "🧪", "🧠", "⚽", "🌱", "⭐"];
 
-let customSubjects = loadJson("customSubjects", []);
-let hiddenDefaultSubjects = loadJson("hiddenDefaultSubjects", []);
-let subjects = [];
+let subjects = loadSubjectList();
+let pendingDeleteName = "";
 let images = loadJson("studyImages", {});
 let notes = loadJson("studyNotes", {});
 let works = loadJson("studyWorks", {});
@@ -30,6 +29,7 @@ const lightbox = document.getElementById("lightbox");
 const lightboxImage = document.getElementById("lightboxImage");
 const lightboxCaption = document.getElementById("lightboxCaption");
 const toastEl = document.getElementById("toast");
+const confirmModal = document.getElementById("confirmModal");
 const notesInput = document.getElementById("notesInput");
 const workList = document.getElementById("workList");
 const uploadArea = document.getElementById("uploadArea");
@@ -40,6 +40,18 @@ function loadJson(key, fallback) {
   } catch {
     return fallback;
   }
+}
+
+function loadSubjectList() {
+  const stored = loadJson("allSubjects", null);
+  if (Array.isArray(stored)) return stored;
+  const custom = loadJson("customSubjects", []);
+  const hidden = loadJson("hiddenDefaultSubjects", []);
+  return [...defaultSubjects.filter(item => !hidden.includes(item.name)), ...custom];
+}
+
+function persistSubjects() {
+  return saveJson("allSubjects", subjects);
 }
 
 function saveJson(key, value) {
@@ -69,17 +81,6 @@ function showToast(message) {
 
 function setModalOpen(isOpen) {
   document.body.classList.toggle("modal-open", isOpen);
-}
-
-function refreshSubjects() {
-  subjects = [
-    ...defaultSubjects.filter(item => !hiddenDefaultSubjects.includes(item.name)),
-    ...customSubjects
-  ];
-}
-
-function isCustomSubject(name) {
-  return customSubjects.some(item => item.name === name);
 }
 
 function getSubject(name) {
@@ -114,7 +115,7 @@ function getFilteredSubjects() {
 function renderSubjects(list = subjects) {
   grid.innerHTML = "";
   if (!list.length) {
-    grid.innerHTML = `<div class="empty-state">ไม่พบวิชาที่ค้นหา ลองสร้างวิชาใหม่ได้เลย</div>`;
+    grid.innerHTML = `<div class="empty-state">${document.getElementById("searchInput").value.trim() ? "ไม่พบวิชาที่ค้นหา" : "ยังไม่มีวิชา กดสร้างวิชาได้เลย"}</div>`;
     renderHeroStats();
     return;
   }
@@ -132,7 +133,7 @@ function renderSubjects(list = subjects) {
       <p class="card-meta">${imageCount} รูป • ${workCount} งาน • ${hasNotes ? "มีโน้ต" : "ยังไม่มีโน้ต"}</p>
       <div class="card-actions">
         <button class="open-btn" type="button">เปิดวิชา →</button>
-        <button class="delete-subject" type="button">ลบวิชา</button>
+        <button class="delete-subject" type="button">ลบ</button>
       </div>
     `;
     card.onclick = event => {
@@ -143,7 +144,7 @@ function renderSubjects(list = subjects) {
     if (deleteBtn) {
       deleteBtn.onclick = event => {
         event.stopPropagation();
-        deleteSubject(subject.name);
+        askDeleteSubject(subject.name);
       };
     }
     grid.appendChild(card);
@@ -155,7 +156,7 @@ function openSubject(subject, tab = "images") {
   currentSubject = subject.name;
   document.getElementById("modalTitle").textContent = `${subject.icon} ${subject.name}`;
   document.getElementById("modalDescription").textContent = subject.desc;
-  document.getElementById("editSubjectBtn").classList.toggle("hidden", !isCustomSubject(subject.name));
+  document.getElementById("editSubjectBtn").classList.remove("hidden");
   modal.classList.remove("hidden");
   setModalOpen(true);
   switchTab(tab);
@@ -167,7 +168,7 @@ function openSubject(subject, tab = "images") {
 
 function closeModal() {
   modal.classList.add("hidden");
-  if (createModal.classList.contains("hidden") && lightbox.classList.contains("hidden")) {
+  if (createModal.classList.contains("hidden") && lightbox.classList.contains("hidden") && confirmModal.classList.contains("hidden")) {
     setModalOpen(false);
   }
 }
@@ -197,7 +198,7 @@ function closeCreateSubjectModal() {
   editingSubjectName = "";
   document.getElementById("createSubjectForm").reset();
   document.getElementById("subjectIconInput").value = "📘";
-  if (modal.classList.contains("hidden") && lightbox.classList.contains("hidden")) {
+  if (modal.classList.contains("hidden") && lightbox.classList.contains("hidden") && confirmModal.classList.contains("hidden")) {
     setModalOpen(false);
   }
 }
@@ -220,17 +221,16 @@ function saveSubject(event) {
 
   const wasEditing = Boolean(editingSubjectName);
   if (wasEditing) {
-    const index = customSubjects.findIndex(item => item.name === editingSubjectName);
+    const index = subjects.findIndex(item => item.name === editingSubjectName);
     if (index === -1) return;
-    customSubjects[index] = { name, icon, desc };
+    subjects[index] = { name, icon, desc };
     moveSubjectData(editingSubjectName, name);
     currentSubject = name;
   } else {
-    customSubjects.push({ name, icon, desc });
+    subjects.push({ name, icon, desc });
   }
 
-  if (!saveJson("customSubjects", customSubjects)) return;
-  refreshSubjects();
+  if (!persistSubjects()) return;
   closeCreateSubjectModal();
   renderSubjects(getFilteredSubjects());
   const subject = getSubject(name);
@@ -259,21 +259,34 @@ function moveSubjectData(from, to) {
   }
 }
 
-function deleteSubject(name) {
-  if (!confirm(`ลบวิชา "${name}" พร้อมรูป โน้ต และผลงานทั้งหมดหรือไม่?`)) return;
-  customSubjects = customSubjects.filter(subject => subject.name !== name);
-  if (defaultSubjects.some(item => item.name === name) && !hiddenDefaultSubjects.includes(name)) {
-    hiddenDefaultSubjects.push(name);
+function askDeleteSubject(name) {
+  pendingDeleteName = name;
+  document.getElementById("confirmMessage").textContent =
+    `ลบวิชา "${name}" พร้อมรูป โน้ต และผลงานทั้งหมดหรือไม่?`;
+  confirmModal.classList.remove("hidden");
+  setModalOpen(true);
+}
+
+function closeConfirmModal() {
+  confirmModal.classList.add("hidden");
+  pendingDeleteName = "";
+  if (modal.classList.contains("hidden") && createModal.classList.contains("hidden") && lightbox.classList.contains("hidden")) {
+    setModalOpen(false);
   }
+}
+
+function confirmDeleteSubject() {
+  const name = pendingDeleteName;
+  if (!name) return;
+  subjects = subjects.filter(subject => subject.name !== name);
   delete images[name];
   delete notes[name];
   delete works[name];
-  if (!saveJson("customSubjects", customSubjects)) return;
-  saveJson("hiddenDefaultSubjects", hiddenDefaultSubjects);
+  persistSubjects();
   saveJson("studyImages", images);
   saveJson("studyNotes", notes);
   saveJson("studyWorks", works);
-  refreshSubjects();
+  closeConfirmModal();
   closeModal();
   renderSubjects(getFilteredSubjects());
   showToast("ลบวิชาแล้ว");
@@ -350,7 +363,7 @@ function closeLightbox() {
   lightbox.classList.add("hidden");
   lightboxImage.src = "";
   lightboxImage.classList.remove("zoomed");
-  if (modal.classList.contains("hidden") && createModal.classList.contains("hidden")) {
+  if (modal.classList.contains("hidden") && createModal.classList.contains("hidden") && confirmModal.classList.contains("hidden")) {
     setModalOpen(false);
   }
 }
@@ -417,7 +430,12 @@ document.getElementById("editSubjectBtn").addEventListener("click", () => {
   openCreateSubjectModal(getSubject(currentSubject));
 });
 document.getElementById("deleteSubjectBtn").addEventListener("click", () => {
-  if (currentSubject) deleteSubject(currentSubject);
+  if (currentSubject) askDeleteSubject(currentSubject);
+});
+document.getElementById("confirmCancelBtn").addEventListener("click", closeConfirmModal);
+document.getElementById("confirmOkBtn").addEventListener("click", confirmDeleteSubject);
+confirmModal.addEventListener("click", event => {
+  if (event.target === confirmModal) closeConfirmModal();
 });
 
 document.querySelectorAll(".tab").forEach(tab => {
@@ -495,11 +513,15 @@ document.addEventListener("keydown", event => {
     return;
   }
   if (event.key === "Escape") {
+    if (!confirmModal.classList.contains("hidden")) {
+      closeConfirmModal();
+      return;
+    }
     closeCreateSubjectModal();
     closeModal();
   }
 });
 
 renderEmojiRow();
-refreshSubjects();
+persistSubjects();
 renderSubjects();
